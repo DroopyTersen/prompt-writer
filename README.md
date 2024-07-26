@@ -1,7 +1,21 @@
-# Welcome to Remix + Cloudflare!
+# Prompt Writer
 
-- 📖 [Remix docs](https://remix.run/docs)
-- 📖 [Remix Cloudflare docs](https://remix.run/guides/vite#cloudflare)
+You know who is great at figuring out how to talk to an LLM? An LLM!
+
+This tool helps helps you write amazing prompt engineered prompts.
+
+## App Overview
+
+1. **Draft**: First roughly describe the task you want to accomplish.
+   ![First rough out the task](./docs/assets//01.png)
+
+2. **Review**: The AI will generate a prompt engineered system prompt for you using the latest and greatest tricks and techniques. You can edit and tweak.
+
+![generated system prompt](docs/assets/02.png)
+
+1. **Test**: Lastly, you can test your prompt against a smaller model to see how it performs using examples that were not part of the system prompt.
+
+![test your prompt](docs/assets/03.png)
 
 ## Development
 
