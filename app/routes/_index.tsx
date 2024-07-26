@@ -5,7 +5,12 @@ import type {
 } from "@remix-run/cloudflare";
 import { BsChevronRight } from "react-icons/bs";
 import { Textarea } from "@/components/ui/textarea";
-import { Form, useActionData, useNavigation } from "@remix-run/react";
+import {
+  Form,
+  useActionData,
+  useFetcher,
+  useNavigation,
+} from "@remix-run/react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PromptWriterForm } from "~/promptWriter/PromptWriterForm";
@@ -31,7 +36,9 @@ import usePersistedState from "~/utils/usePersistedState";
 import { useIsHydrated } from "~/utils/useIsHydrated";
 import OpenAI from "openai";
 import { testPrompt } from "~/promptWriter/testPrompt";
-
+import { Overlay } from "~/toolkit/components/Overlay";
+import { PiSpinnerBallDuotone } from "react-icons/pi";
+import { AiOutlineLoading3Quarters as Spinner } from "react-icons/ai";
 export const meta: MetaFunction = () => {
   return [
     { title: "Prompt Writer" },
@@ -41,65 +48,85 @@ export const meta: MetaFunction = () => {
     },
   ];
 };
+type ActionData = {
+  error?: string;
+  input: PromptWriterInput;
+  promptExamples: PromptResponsePair[];
+  nextStep: string;
+  systemPrompt: string;
+  fullSystemPrompt: string;
+  testResults: Array<{
+    input: string;
+    expected: string;
+    actual: string;
+  }>;
+};
 
 export const action = async ({ request, context }: ActionFunctionArgs) => {
-  let formData = await request.formData();
-  let input = validateSchema(formData, PromptWriterInput);
-  let intent = formData.get("intent");
-  console.log("🚀 | action | intent:", intent, input);
-  if (intent === "generate") {
-    // @ts-ignore
-    let apiKey: string = context.cloudflare.env["ANTHROPIC_API_KEY"];
-    let anthropic = new Anthropic({
-      apiKey,
-    });
-
-    let promptExamples = await generatePromptExamples(
-      input.task,
-      input.examples,
-      anthropic
-    );
-    let systemPrompt = await generateSystemPrompt(
-      input.task,
-      promptExamples,
-      anthropic
-    );
-    let nextStep = intent === "generate" ? "02" : "03";
-    return {
-      input,
-      promptExamples,
-      systemPrompt,
-      nextStep,
-      testResults: [],
-      fullSystemPrompt: formatSystemPrompt(systemPrompt, promptExamples),
-      // fullSystemPrompt2: formatSystemPrompt(systemPrompt2, promptExamples2),
-      submitted: {
-        task: formData.get("task"),
-        examples: formData.get("examples"),
-      },
-    };
-  } else if (
-    intent === "test" &&
-    input.finalExamples &&
-    input.finalSystemPrompt
-  ) {
-    let systemPrompt = input.finalSystemPrompt || "";
-    let promptExamples = parseInputExamples(input.finalExamples);
-    let openai = new OpenAI({
+  try {
+    let formData = await request.formData();
+    let intent = formData.get("intent");
+    let input = validateSchema(formData, PromptWriterInput);
+    console.log("🚀 | action | intent:", intent, input);
+    if (intent === "generate") {
       // @ts-ignore
-      apiKey: context.cloudflare.env["OPENAI_API_KEY"],
-    });
-    let results = await testPrompt(systemPrompt, promptExamples, openai);
-    return {
-      input,
-      promptExamples,
-      fullSystemPrompt: input.finalSystemPrompt,
-      nextStep: "03",
-      testResults: results,
-    };
-  }
+      let apiKey: string = context.cloudflare.env["ANTHROPIC_API_KEY"];
+      let anthropic = new Anthropic({
+        apiKey,
+      });
 
-  throw new Response("invalid intent", { status: 400 });
+      let promptExamples = await generatePromptExamples(
+        input.task,
+        input.examples,
+        anthropic
+      );
+      let systemPrompt = await generateSystemPrompt(
+        input.task,
+        promptExamples,
+        anthropic
+      );
+      let nextStep = intent === "generate" ? "02" : "03";
+      return {
+        input,
+        promptExamples: input.examples,
+        systemPrompt,
+        nextStep,
+        testResults: [],
+        fullSystemPrompt: formatSystemPrompt(systemPrompt, promptExamples),
+        // fullSystemPrompt2: formatSystemPrompt(systemPrompt2, promptExamples2),
+        submitted: {
+          task: formData.get("task"),
+          examples: formData.get("examples"),
+        },
+      };
+    } else if (
+      intent === "test" &&
+      input.finalExamples &&
+      input.finalSystemPrompt
+    ) {
+      let systemPrompt = input.finalSystemPrompt || "";
+      let promptExamples = parseInputExamples(input.finalExamples);
+      let openai = new OpenAI({
+        // @ts-ignore
+        apiKey: context.cloudflare.env["OPENAI_API_KEY"],
+      });
+      let results = await testPrompt(systemPrompt, promptExamples, openai);
+      return {
+        input,
+        promptExamples,
+        fullSystemPrompt: input.finalSystemPrompt,
+        nextStep: "03",
+        testResults: results,
+      };
+    }
+
+    throw new Error("invalid intent");
+  } catch (error: any) {
+    console.error("Error in action function:", error);
+    return {
+      error: error.message,
+    } as any;
+  }
 };
 
 const wizardSteps: WizardStep[] = [
@@ -116,8 +143,9 @@ const wizardSteps: WizardStep[] = [
     name: "Test",
   } as const,
 ];
+
 export default function Index() {
-  let actionData = useActionData<typeof action>();
+  let actionData = useActionData() as Partial<ActionData>;
   let navigation = useNavigation();
   let [currentStep, setCurrentStep] = usePersistedState(
     "01",
@@ -140,6 +168,10 @@ export default function Index() {
   }, [actionData?.fullSystemPrompt]);
   useEffect(() => {
     if (actionData?.promptExamples && actionData.promptExamples.length > 0) {
+      console.log(
+        "🚀 | useEffect | actionData.promptExamples:",
+        actionData.promptExamples
+      );
       setInputExamples(inputExamplesToString(actionData.promptExamples));
     }
   }, [actionData?.promptExamples]);
@@ -151,6 +183,9 @@ export default function Index() {
   }, [actionData?.nextStep]);
 
   let isHydrated = useIsHydrated();
+  if (!isHydrated) {
+    return <div></div>;
+  }
   return (
     <div className="font-sans p-4 max-w-3xl mx-auto">
       <h1 className="text-3xl font-extrabold mb-4">Prompt Writer</h1>
@@ -168,17 +203,42 @@ export default function Index() {
         <Form method="post">
           <fieldset
             disabled={isLoading}
-            className="bg-slate-50 mt-4 p-4 rounded-lg"
+            className="bg-slate-50 mt-4 p-4 rounded-lg relative"
           >
+            {isLoading && (
+              <Overlay className="bg-white" opacity={0.7}>
+                <div className="flex flex-col items-center justify-center">
+                  <span className="text-lg font-bold uppercase animate-pulse">
+                    {currentStep === "01"
+                      ? "Prompt Engineering..."
+                      : "Working on it..."}
+                  </span>
+                  <Spinner className="mt-2 h-7 w-7 animate-spin opacity-70" />
+                </div>
+              </Overlay>
+            )}
+            {actionData?.error && (
+              <div className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-700">
+                <pre className="text-sm font-mono font-bold">
+                  {actionData.error}
+                </pre>
+              </div>
+            )}
             <div className={currentStep === "01" ? "" : "hidden"}>
-              <p className="mt-6 text-base">
-                Roughly describe the task you want to accomplish. Then provide a
-                fiew examples of inputs and outputs.
+              <p className="mb-8 text-base font-semibold text-slate-700">
+                1) Roughly describe the task you want to accomplish. Then
+                provide a few examples of what you expect.
               </p>
               <PromptWriterForm initial={SCORE_COMPLEXITY} />
             </div>
 
             <div className={currentStep === "02" ? "" : "hidden"}>
+              {systemPrompt && (
+                <p className="mb-8 text-base font-semibold text-slate-700">
+                  2) Here is your LLM generated system prompt. Tweak and edit to
+                  improve.
+                </p>
+              )}
               <PromptReviewForm
                 value={systemPrompt}
                 onNext={() => setCurrentStep("03")}
@@ -187,7 +247,19 @@ export default function Index() {
             </div>
 
             <div className={currentStep === "03" ? "" : "hidden"}>
+              <p className="mb-8 text-base font-semibold text-slate-700">
+                3) Now that you have the perfect{" "}
+                <a
+                  className="underline"
+                  href="#"
+                  onClick={() => setCurrentStep("02")}
+                >
+                  system prompt
+                </a>
+                , see how it performs on some other examples.
+              </p>
               <TestPromptTab
+                systemPrompt={systemPrompt}
                 value={inputExamples}
                 onChange={setInputExamples}
                 results={actionData?.testResults as any}
@@ -259,6 +331,7 @@ function PromptReviewForm({ value, onChange, onNext }: PromptReviewFormProps) {
 
 type TestPromptTabProps = {
   value: string;
+  systemPrompt: string;
   onChange: (value: string) => void;
   results?: Array<{
     input: string;
@@ -266,11 +339,48 @@ type TestPromptTabProps = {
     actual: string;
   }>;
 };
-function TestPromptTab({ value, onChange, results }: TestPromptTabProps) {
+function TestPromptTab({
+  value,
+  onChange,
+  results,
+  systemPrompt,
+}: TestPromptTabProps) {
+  let fetcher = useFetcher();
+
+  const generateMoreExamples = () => {
+    console.log("HERE");
+    fetcher.submit(
+      {
+        systemPrompt,
+        inputExamples: value,
+      },
+      {
+        method: "POST",
+        action: "/api/more-examples",
+      }
+    );
+  };
+  useEffect(() => {
+    if (fetcher.data) {
+      onChange(value + "\n\n" + fetcher.data);
+      // alert("Done! But you've got to fill in the expected responses.");
+    }
+  }, [fetcher.data]);
   return (
     <div className="space-y-8">
       <div className="grid gap-3">
-        <Label htmlFor="content">Examples</Label>
+        <div className="flex justify-between">
+          <Label htmlFor="content">Examples</Label>
+          <Button
+            variant="default"
+            type="button"
+            className="w-32"
+            disabled={fetcher.state !== "idle"}
+            onClick={() => generateMoreExamples()}
+          >
+            {fetcher.state === "idle" ? "Generate More" : "Generating..."}
+          </Button>
+        </div>
         <Textarea
           name="finalExamples"
           id="finalExamples"
@@ -285,7 +395,7 @@ function TestPromptTab({ value, onChange, results }: TestPromptTabProps) {
       </div>
 
       <div className="grid place-items-center">
-        <Button type="submit" name="intent" value="test">
+        <Button type="submit" name="intent" value="test" className="w-40">
           Test Prompt
         </Button>
         <p className="text-xs mt-4 text-center text-slate-500" data-description>
@@ -293,7 +403,7 @@ function TestPromptTab({ value, onChange, results }: TestPromptTabProps) {
         </p>
       </div>
       {results && results?.length > 0 && (
-        <div className="mt-4">
+        <div className="mt-4 text-sm">
           <table className="w-full">
             <thead>
               <tr>

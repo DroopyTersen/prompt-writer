@@ -4,24 +4,31 @@ import { PromptResponsePair } from "./generatePromptExamples";
 export const parseInputExamples = (
   inputExamples: string
 ): PromptResponsePair[] => {
-  // Split the text into individual Q&A pairs
-  const pairs = inputExamples
-    .split(/\n(?=Q:)/)
-    .filter((pair) => pair.trim() !== "");
+  try {
+    // Split the text into individual Q&A pairs
+    const pairs = inputExamples
+      .split(/\n(?=Q:)/)
+      .filter((pair) => pair.trim() !== "");
 
-  // Process each pair into an object with input and output
-  return pairs.map((pair) => {
-    // Split the pair into question and answer
-    const [question, answer] = pair
-      .split(/\n(?=A:)/)
-      .map((part) => part.trim());
+    // Process each pair into an object with input and output
+    return pairs.map((pair) => {
+      // Split the pair into question and answer
+      const [question, answer] = pair
+        .split(/\n(?=A:)/)
+        .map((part) => part.trim());
 
-    // Remove the 'Q:' and 'A:' prefixes
-    const input = question.replace(/^Q:\s*/, "").trim();
-    const output = answer.replace(/^A:\s*/, "").trim();
+      // Remove the 'Q:' and 'A:' prefixes
+      const input = question.replace(/^Q:\s*/, "").trim();
+      const output = answer.replace(/^A:\s*/, "").trim();
 
-    return { prompt: input, response: output } as PromptResponsePair;
-  });
+      return { prompt: input, response: output } as PromptResponsePair;
+    });
+  } catch (error) {
+    console.error("Error parsing input examples:", error);
+    throw new Error(
+      "Error parsing input examples. Please make examples are in this format: \nQ: <prompt>\nA: <response>\nQ: <prompt>\nA: <response>\n..."
+    );
+  }
 };
 
 export const PromptWriterInput = z.object({
