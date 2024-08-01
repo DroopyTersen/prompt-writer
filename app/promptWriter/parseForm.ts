@@ -2,9 +2,11 @@ import { z } from "zod";
 import { PromptResponsePair } from "./generatePromptExamples";
 
 export const parseInputExamples = (
-  inputExamples: string
+  inputExamples?: string
 ): PromptResponsePair[] => {
+  console.log("🚀 | inputExamples:", inputExamples);
   try {
+    if (!inputExamples) return [];
     // Split the text into individual Q&A pairs
     const pairs = inputExamples
       .split(/\n(?=Q:)/)
@@ -18,8 +20,8 @@ export const parseInputExamples = (
         .map((part) => part.trim());
 
       // Remove the 'Q:' and 'A:' prefixes
-      const input = question.replace(/^Q:\s*/, "").trim();
-      const output = answer.replace(/^A:\s*/, "").trim();
+      const input = question?.replace?.(/^Q:\s*/, "").trim() || "";
+      const output = answer?.replace?.(/^A:\s*/, "").trim() || "";
 
       return { prompt: input, response: output } as PromptResponsePair;
     });
@@ -33,7 +35,7 @@ export const parseInputExamples = (
 
 export const PromptWriterInput = z.object({
   task: z.string(),
-  examples: z.string().transform(parseInputExamples),
+  examples: z.string().optional().transform(parseInputExamples),
   finalExamples: z.string().optional(),
   finalSystemPrompt: z.string().optional(),
 });

@@ -75,11 +75,10 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
         apiKey,
       });
 
-      let promptExamples = await generatePromptExamples(
-        input.task,
-        input.examples,
-        anthropic
-      );
+      let promptExamples =
+        input.examples?.length > 0
+          ? await generatePromptExamples(input.task, input.examples, anthropic)
+          : [];
       let systemPrompt = await generateSystemPrompt(
         input.task,
         promptExamples,

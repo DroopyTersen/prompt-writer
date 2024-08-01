@@ -10,7 +10,7 @@ import { validateSchema } from "~/utils/validateSchema";
 
 export const MoreExamplesInput = z.object({
   systemPrompt: z.string(),
-  inputExamples: z.string().transform(parseInputExamples),
+  inputExamples: z.string().optional().transform(parseInputExamples),
 });
 
 export const action = async ({ request, context }: ActionFunctionArgs) => {

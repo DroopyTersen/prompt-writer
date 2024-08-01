@@ -11,11 +11,16 @@ export async function generateSystemPrompt(
       model: "claude-3-5-sonnet-20240620",
       max_tokens: 1000,
       temperature: 0.5,
-      system: `<your_role>Given a user-description of their <task> a set of prompt / response pairs (it'll be in JSON for easy reading) for the types of outputs we want to generate given inputs, write a fantastic system prompt that describes the task to be done perfectly.</your_role>
+      system: `<your_role>Given a user-description of their <task> ${
+        promptExamples?.length > 0
+          ? "and a set of prompt / response pairs (it'll be in JSON for easy reading) for the types of outputs we want to generate given inputs"
+          : ""
+      }, write a fantastic system prompt that describes the task to be done perfectly.</your_role>
 
 <rules>
 1. Do this perfectly.
 2. Respond only with the system prompt, and nothing else. No other text will be allowed.
+3. Use any prompt engineering techniques that are appropriate for the task.
 </rules>
 
 Respond in this format:
@@ -55,6 +60,7 @@ export const formatSystemPrompt = (
   systemPrompt: string,
   examples: PromptResponsePair[]
 ) => {
+  if (!examples.length) return systemPrompt;
   return `${systemPrompt}
 
 ## Examples
