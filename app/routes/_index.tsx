@@ -39,6 +39,7 @@ import { testPrompt } from "~/promptWriter/testPrompt";
 import { Overlay } from "~/toolkit/components/Overlay";
 import { PiSpinnerBallDuotone } from "react-icons/pi";
 import { AiOutlineLoading3Quarters as Spinner } from "react-icons/ai";
+import { generateSystemPrompt2 } from "~/promptWriter/generateSystemPrompt2";
 export const meta: MetaFunction = () => {
   return [
     { title: "Prompt Writer" },
@@ -79,7 +80,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
         input.examples?.length > 0
           ? await generatePromptExamples(input.task, input.examples, anthropic)
           : [];
-      let systemPrompt = await generateSystemPrompt(
+      let systemPrompt = await generateSystemPrompt2(
         input.task,
         promptExamples,
         anthropic
