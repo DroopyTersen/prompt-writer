@@ -9,39 +9,15 @@ export interface PromptResponsePair {
 export async function generatePromptExamples(
   task: string,
   inputExamples: PromptResponsePair[],
-  anthropic: Anthropic
+  anthropic: Anthropic,
+  targetModel: { provider: string; modelName: string }
 ): Promise<PromptResponsePair[]> {
   try {
     const response = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20240620",
+      model: targetModel.modelName,
       max_tokens: 4000,
       temperature: 0.5,
-      system: `<task>Given an example training sample, create seven additional samples for the same task that are even better. Each example should contain a <prompt> and a <response>.</task>
-<rules>
-1. Ensure the new examples are diverse and unique from one another.
-2. They should all be perfect. If you make a mistake, this system won't work.
-3. The prompt examples should capture the full range of possible inputs and outputs.
-</rules>
-Respond in this format:
-<response_format>
-<example_one>
-<prompt>
-PUT_PROMPT_HERE
-</prompt>
-<response>
-PUT_RESPONSE_HERE
-</response>
-</example_one>
-<example_two>
-<prompt>
-PUT_PROMPT_HERE
-</prompt>
-<response>
-PUT_RESPONSE_HERE
-</response>
-</example_two>
-...
-</response_format>`,
+      system: getSystemPrompt(targetModel.modelName),
       messages: [
         {
           role: "user",
@@ -88,3 +64,87 @@ ${inputExamples
     throw error;
   }
 }
+
+const getSystemPrompt = (modelName: string) => {
+  if (modelName.startsWith("claude")) {
+    return `<task>Given an example training sample, create seven additional samples for the same task that are even better. Each example should contain a <prompt> and a <response>.</task>
+<rules>
+1. Ensure the new examples are diverse and unique from one another.
+2. They should all be perfect. If you make a mistake, this system won't work.
+3. The prompt examples should capture the full range of possible inputs and outputs.
+</rules>
+Respond in this format:
+<response_format>
+<example_one>
+<prompt>
+PUT_PROMPT_HERE
+</prompt>
+<response>
+PUT_RESPONSE_HERE
+</response>
+</example_one>
+<example_two>
+<prompt>
+PUT_PROMPT_HERE
+</prompt>
+<response>
+PUT_RESPONSE_HERE
+</response>
+</example_two>
+...
+</response_format>`;
+  } else if (modelName.startsWith("gpt")) {
+    return `<task>Given an example training sample, create seven additional samples for the same task that are even better. Each example should contain a <prompt> and a <response>.</task>
+<rules>
+1. Ensure the new examples are diverse and unique from one another.
+2. They should all be perfect. If you make a mistake, this system won't work.
+3. The prompt examples should capture the full range of possible inputs and outputs.
+</rules>
+Respond in this format:
+<response_format>
+<example_one>
+<prompt>
+PUT_PROMPT_HERE
+</prompt>
+<response>
+PUT_RESPONSE_HERE
+</response>
+</example_one>
+<example_two>
+<prompt>
+PUT_PROMPT_HERE
+</prompt>
+<response>
+PUT_RESPONSE_HERE
+</response>
+</example_two>
+...
+</response_format>`;
+  } else {
+    return `<task>Given an example training sample, create seven additional samples for the same task that are even better. Each example should contain a <prompt> and a <response>.</task>
+<rules>
+1. Ensure the new examples are diverse and unique from one another.
+2. They should all be perfect. If you make a mistake, this system won't work.
+3. The prompt examples should capture the full range of possible inputs and outputs.
+</rules>
+Respond in this format:
+<response_format>
+<example_one>
+<prompt>
+PUT_PROMPT_HERE
+</prompt>
+<response>
+PUT_RESPONSE_HERE
+</response>
+</example_one>
+<example_two>
+<prompt>
+PUT_PROMPT_HERE
+</prompt>
+<response>
+PUT_RESPONSE_HERE
+</response_two>
+...
+</response_format>`;
+  }
+};

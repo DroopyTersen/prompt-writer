@@ -4,29 +4,15 @@ import { PromptResponsePair } from "./generatePromptExamples";
 export async function generateSystemPrompt(
   task: string,
   promptExamples: PromptResponsePair[],
-  anthropic: Anthropic
+  anthropic: Anthropic,
+  targetModel: { provider: string; modelName: string }
 ): Promise<string> {
   try {
     const response = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20240620",
+      model: targetModel.modelName,
       max_tokens: 1000,
       temperature: 0.5,
-      system: `<your_role>Given a user-description of their <task> ${
-        promptExamples?.length > 0
-          ? "and a set of prompt / response pairs (it'll be in JSON for easy reading) for the types of outputs we want to generate given inputs"
-          : ""
-      }, write a fantastic system prompt that describes the task to be done perfectly.</your_role>
-
-<rules>
-1. Do this perfectly.
-2. Respond only with the system prompt, and nothing else. No other text will be allowed.
-3. Use any prompt engineering techniques that are appropriate for the task.
-</rules>
-
-Respond in this format:
-<system_prompt>
-WRITE_SYSTEM_PROMPT_HERE
-</system_prompt>`,
+      system: getSystemPrompt(targetModel.modelName, promptExamples),
       messages: [
         {
           role: "user",
@@ -55,6 +41,64 @@ ${JSON.stringify(promptExamples, null, 2)}
     throw error;
   }
 }
+
+const getSystemPrompt = (
+  modelName: string,
+  promptExamples: PromptResponsePair[]
+) => {
+  if (modelName.startsWith("claude")) {
+    return `<your_role>Given a user-description of their <task> ${
+      promptExamples?.length > 0
+        ? "and a set of prompt / response pairs (it'll be in JSON for easy reading) for the types of outputs we want to generate given inputs"
+        : ""
+    }, write a fantastic system prompt that describes the task to be done perfectly.</your_role>
+
+<rules>
+1. Do this perfectly.
+2. Respond only with the system prompt, and nothing else. No other text will be allowed.
+3. Use any prompt engineering techniques that are appropriate for the task.
+</rules>
+
+Respond in this format:
+<system_prompt>
+WRITE_SYSTEM_PROMPT_HERE
+</system_prompt>`;
+  } else if (modelName.startsWith("gpt")) {
+    return `<your_role>Given a user-description of their <task> ${
+      promptExamples?.length > 0
+        ? "and a set of prompt / response pairs (it'll be in JSON for easy reading) for the types of outputs we want to generate given inputs"
+        : ""
+    }, write a fantastic system prompt that describes the task to be done perfectly.</your_role>
+
+<rules>
+1. Do this perfectly.
+2. Respond only with the system prompt, and nothing else. No other text will be allowed.
+3. Use any prompt engineering techniques that are appropriate for the task.
+</rules>
+
+Respond in this format:
+<system_prompt>
+WRITE_SYSTEM_PROMPT_HERE
+</system_prompt>`;
+  } else {
+    return `<your_role>Given a user-description of their <task> ${
+      promptExamples?.length > 0
+        ? "and a set of prompt / response pairs (it'll be in JSON for easy reading) for the types of outputs we want to generate given inputs"
+        : ""
+    }, write a fantastic system prompt that describes the task to be done perfectly.</your_role>
+
+<rules>
+1. Do this perfectly.
+2. Respond only with the system prompt, and nothing else. No other text will be allowed.
+3. Use any prompt engineering techniques that are appropriate for the task.
+</rules>
+
+Respond in this format:
+<system_prompt>
+WRITE_SYSTEM_PROMPT_HERE
+</system_prompt>`;
+  }
+};
 
 export const formatSystemPrompt = (
   systemPrompt: string,

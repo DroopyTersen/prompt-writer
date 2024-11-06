@@ -417,6 +417,6 @@ export const getCachedMessageContent = (content: string) => {
     },
   } as {
     type: "text";
-    text: string;
+    text: content;
   };
 };
