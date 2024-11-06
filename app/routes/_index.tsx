@@ -76,14 +76,20 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
         apiKey,
       });
 
+      let targetModel = {
+        provider: formData.get("modelProvider") as string,
+        modelName: formData.get("modelName") as string,
+      };
+
       let promptExamples =
         input.examples?.length > 0
-          ? await generatePromptExamples(input.task, input.examples, anthropic)
+          ? await generatePromptExamples(input.task, input.examples, anthropic, targetModel)
           : [];
       let systemPrompt = await generateSystemPrompt2(
         input.task,
         promptExamples,
-        anthropic
+        anthropic,
+        targetModel
       );
       let nextStep = intent === "generate" ? "02" : "03";
       return {
@@ -230,6 +236,18 @@ export default function Index() {
                 provide a few examples of what you expect.
               </p>
               <PromptWriterForm initial={SCORE_COMPLEXITY} />
+              <div className="grid gap-3 mt-6">
+                <Label htmlFor="modelProvider">Model Provider</Label>
+                <select name="modelProvider" id="modelProvider">
+                  <option value="anthropic">Anthropic</option>
+                  <option value="openai">OpenAI</option>
+                </select>
+                <Label htmlFor="modelName">Model Name</Label>
+                <select name="modelName" id="modelName">
+                  <option value="claude-3-5-sonnet-20240620">Claude 3.5</option>
+                  <option value="gpt-4o-mini">GPT-4o-mini</option>
+                </select>
+              </div>
             </div>
 
             <div className={currentStep === "02" ? "" : "hidden"}>
